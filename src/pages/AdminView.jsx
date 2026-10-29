@@ -1,182 +1,246 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { groupService, adminService } from '../services/groupService';
+import { adminApi } from '../services/api';
+import AppHeader from '../components/AppHeader';
+import { formatDate, formatDateTime, timeAgo } from '../utils/format';
 import './AdminView.css';
 
-export default function AdminView() {
-  const { token, logout } = useAuth();
+/**
+ * Panel de administración: grupos y usuarios.
+ * Por diseño NO muestra ubicaciones ni claves de cifrado (el backend tampoco las envía).
+ */
 
-  const [groups, setGroups]   = useState([]);
-  const [users, setUsers]     = useState([]);
-  const [tab, setTab]         = useState('groups'); // 'groups' | 'users'
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+function useDebounced(value, ms = 300) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
 
-  async function loadData() {
-    setLoading(true);
-    setError('');
+function Stat({ label, value }) {
+  return (
+    <div className="stat">
+      <span className="stat__value">{value ?? '—'}</span>
+      <span className="stat__label">{label}</span>
+    </div>
+  );
+}
+
+function GroupDetail({ id, onClose, onDeleted }) {
+  const [group, setGroup] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    adminApi.group(id).then((d) => setGroup(d.group)).catch((e) => setError(e.message));
+  }, [id]);
+
+  async function remove() {
+    if (!confirm(`¿Eliminar "${group.name}"? Los ${group.members.length} miembros quedan sin grupo y se borra su historial.`)) return;
     try {
-      const [gRes, uRes] = await Promise.all([
-        groupService.getAllGroups(token),
-        adminService.getAllUsers(token)
-      ]);
-      setGroups(gRes.groups);
-      setUsers(uRes.users);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { if (token) loadData(); }, [token]);
-
-  async function handleDeleteGroup(id) {
-    if (!confirm('¿Eliminar este grupo y desvincular a todos sus miembros?')) return;
-    try {
-      await groupService.deleteGroup(token, id);
-      setGroups((prev) => prev.filter((g) => g.id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
-  }
-
-  async function handleDeleteUser(id) {
-    if (!confirm('¿Eliminar este usuario?')) return;
-    try {
-      await adminService.deleteUser(token, id);
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-    } catch (err) {
-      alert(err.message);
+      await adminApi.deleteGroup(id);
+      onDeleted(id);
+    } catch (e) {
+      setError(e.message);
     }
   }
 
   return (
-    <div className="admin-view">
-      {/* Header */}
-      <header className="admin-header">
-        <div className="admin-header__brand">
-          <span>📡</span>
-          <strong>GuiAR</strong>
-          <span className="admin-badge">Admin</span>
+    <aside className="drawer card">
+      <div className="row-between">
+        <h2>{group?.name || 'Grupo'}</h2>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Cerrar</button>
+      </div>
+      {error && <p className="alert alert-error">{error}</p>}
+      {!group && !error && <p className="muted">Cargando…</p>}
+      {group && (
+        <>
+          <dl className="detail-list">
+            <dt>ID</dt><dd><code className="mono-sm">{group.id}</code></dd>
+            <dt>Creado</dt><dd>{formatDateTime(group.createdAt)}</dd>
+            <dt>Última actividad</dt><dd>{group.lastActivityAt ? timeAgo(group.lastActivityAt) : 'Nunca'}</dd>
+          </dl>
+          <h3>Miembros ({group.members.length})</h3>
+          <ul className="plain-list">
+            {group.members.map((m) => (
+              <li key={m.id} className="row-between">
+                <span>
+                  <span className={`presence ${m.online ? 'is-on' : ''}`} aria-label={m.online ? 'en línea' : 'desconectado'} />
+                  {m.displayName} {m.isOwner && <span className="tag">creador</span>}
+                  <span className="muted small block">{m.email}</span>
+                </span>
+                <span className="muted small">{formatDate(m.joinedAt)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="muted small">Las ubicaciones de los grupos son privadas y no se muestran en este panel.</p>
+          <button className="btn btn-danger-outline btn-block" onClick={remove}>Eliminar grupo</button>
+        </>
+      )}
+    </aside>
+  );
+}
+
+function GroupsTab({ onChange }) {
+  const [search, setSearch] = useState('');
+  const q = useDebounced(search);
+  const [groups, setGroups] = useState(null);
+  const [error, setError] = useState('');
+  const [selected, setSelected] = useState(null);
+
+  const load = useCallback(() => {
+    adminApi.groups(q).then((d) => { setGroups(d.groups); setError(''); }).catch((e) => setError(e.message));
+  }, [q]);
+  useEffect(load, [load]);
+
+  function handleDeleted(id) {
+    setSelected(null);
+    setGroups((gs) => gs.filter((g) => g.id !== id));
+    onChange();
+  }
+
+  return (
+    <div className={`admin-split ${selected ? 'has-drawer' : ''}`}>
+      <div className="card table-card">
+        <div className="toolbar">
+          <input className="input" placeholder="Buscar por nombre, ID o email del creador" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <button className="btn btn-ghost btn-sm" onClick={load}>Actualizar</button>
         </div>
-        <button className="btn-ghost" onClick={logout}>Salir</button>
-      </header>
-
-      {/* Tabs */}
-      <nav className="admin-tabs">
-        <button className={tab === 'groups' ? 'active' : ''} onClick={() => setTab('groups')}>
-          👥 Grupos ({groups.length})
-        </button>
-        <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>
-          🧑 Usuarios ({users.length})
-        </button>
-      </nav>
-
-      <div className="admin-content">
-        {loading && <p className="admin-loading">Cargando…</p>}
-        {error   && <p className="admin-error">⚠️ {error}</p>}
-
-        {/* ── Grupos ── */}
-        {tab === 'groups' && !loading && (
-          <>
-            <div className="admin-section-header">
-              <h2>Grupos creados</h2>
-              <button className="btn-ghost btn-sm" onClick={loadData}>🔄 Actualizar</button>
-            </div>
-
-            {groups.length === 0 ? (
-              <p className="admin-empty">No hay grupos creados todavía.</p>
-            ) : (
-              <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Clave</th>
-                      <th>Owner</th>
-                      <th>Miembros</th>
-                      <th>Creado</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groups.map((g) => (
-                      <tr key={g.id}>
-                        <td><strong>{g.name}</strong></td>
-                        <td><code className="key-code">{g.joinKey}</code></td>
-                        <td>{g.owner?.displayName || g.owner?.email || '—'}</td>
-                        <td className="td-center">{g._count?.members ?? '—'}</td>
-                        <td className="td-muted">{new Date(g.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <button
-                            className="btn-danger-sm"
-                            onClick={() => handleDeleteGroup(g.id)}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── Usuarios ── */}
-        {tab === 'users' && !loading && (
-          <>
-            <div className="admin-section-header">
-              <h2>Usuarios registrados</h2>
-              <button className="btn-ghost btn-sm" onClick={loadData}>🔄 Actualizar</button>
-            </div>
-
-            {users.length === 0 ? (
-              <p className="admin-empty">No hay usuarios registrados todavía.</p>
-            ) : (
-              <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Email</th>
-                      <th>Rol</th>
-                      <th>Grupo</th>
-                      <th>Registrado</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u) => (
-                      <tr key={u.id}>
-                        <td><strong>{u.displayName}</strong></td>
-                        <td className="td-muted">{u.email || '—'}</td>
-                        <td>
-                          <span className={`role-badge role-badge--${u.role.toLowerCase()}`}>
-                            {u.role}
-                          </span>
-                        </td>
-                        <td>{u.group?.name || <span className="td-muted">Sin grupo</span>}</td>
-                        <td className="td-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <button
-                            className="btn-danger-sm"
-                            onClick={() => handleDeleteUser(u.id)}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
+        {error && <p className="alert alert-error">{error}</p>}
+        {groups && groups.length === 0 && <p className="empty">{q ? 'Sin resultados.' : 'Todavía no hay grupos.'}</p>}
+        {groups && groups.length > 0 && (
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr><th>Grupo</th><th>Creador</th><th className="num">Miembros</th><th className="num">En línea</th><th>Actividad</th><th>Creado</th></tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => (
+                  <tr key={g.id} className={selected === g.id ? 'is-selected' : ''} onClick={() => setSelected(g.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelected(g.id)}>
+                    <td><strong>{g.name}</strong><span className="muted small block mono-sm">{g.id}</span></td>
+                    <td>{g.owner?.displayName}<span className="muted small block">{g.owner?.email}</span></td>
+                    <td className="num">{g.memberCount}</td>
+                    <td className="num">{g.onlineCount > 0 ? <span className="pill pill-live">{g.onlineCount}</span> : <span className="muted">0</span>}</td>
+                    <td className="muted">{g.lastActivityAt ? timeAgo(g.lastActivityAt) : 'Nunca'}</td>
+                    <td className="muted">{formatDate(g.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+      {selected && <GroupDetail key={selected} id={selected} onClose={() => setSelected(null)} onDeleted={handleDeleted} />}
+    </div>
+  );
+}
+
+function UsersTab({ onChange }) {
+  const { user: me } = useAuth();
+  const [search, setSearch] = useState('');
+  const q = useDebounced(search);
+  const [users, setUsers] = useState(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    adminApi.users(q).then((d) => { setUsers(d.users); setError(''); }).catch((e) => setError(e.message));
+  }, [q]);
+  useEffect(load, [load]);
+
+  async function toggleRole(u) {
+    const role = u.role === 'ADMIN' ? 'USER' : 'ADMIN';
+    if (!confirm(role === 'ADMIN' ? `¿Hacer admin a ${u.email}?` : `¿Quitarle el rol de admin a ${u.email}?`)) return;
+    try {
+      await adminApi.setRole(u.id, role);
+      setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, role } : x)));
+      onChange();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function remove(u) {
+    if (!confirm(`¿Eliminar la cuenta de ${u.email}? Se borra también en Firebase y no se puede deshacer.`)) return;
+    try {
+      await adminApi.deleteUser(u.id);
+      setUsers((us) => us.filter((x) => x.id !== u.id));
+      onChange();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <div className="card table-card">
+      <div className="toolbar">
+        <input className="input" placeholder="Buscar por nombre o email" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <button className="btn btn-ghost btn-sm" onClick={load}>Actualizar</button>
+      </div>
+      {error && <p className="alert alert-error">{error}</p>}
+      {users && users.length === 0 && <p className="empty">Sin resultados.</p>}
+      {users && users.length > 0 && (
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr><th>Usuario</th><th>Rol</th><th>Grupo</th><th>Registrado</th><th /></tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td><strong>{u.displayName}</strong><span className="muted small block">{u.email || '—'}</span></td>
+                  <td><span className={`pill ${u.role === 'ADMIN' ? 'pill-admin' : ''}`}>{u.role === 'ADMIN' ? 'Admin' : 'Usuario'}</span></td>
+                  <td>{u.group?.name || <span className="muted">Sin grupo</span>}</td>
+                  <td className="muted">{formatDate(u.createdAt)}</td>
+                  <td className="actions">
+                    {u.id !== me?.id && (
+                      <>
+                        <button className="btn btn-link small" onClick={() => toggleRole(u)}>{u.role === 'ADMIN' ? 'Quitar admin' : 'Hacer admin'}</button>
+                        <button className="btn btn-link btn-danger-text small" onClick={() => remove(u)}>Eliminar</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminView() {
+  const [tab, setTab] = useState('groups');
+  const [stats, setStats] = useState(null);
+
+  const loadStats = useCallback(() => {
+    adminApi.stats().then(setStats).catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadStats();
+    const id = setInterval(loadStats, 15000);
+    return () => clearInterval(id);
+  }, [loadStats]);
+
+  return (
+    <div className="page">
+      <AppHeader subtitle="Administración" />
+      <main className="admin">
+        <div className="stats">
+          <Stat label="Grupos" value={stats?.groups} />
+          <Stat label="Usuarios" value={stats?.users} />
+          <Stat label="Sin grupo" value={stats?.usersWithoutGroup} />
+          <Stat label="Conexiones en vivo" value={stats?.connections} />
+        </div>
+
+        <div className="segmented">
+          <button className={tab === 'groups' ? 'is-active' : ''} onClick={() => setTab('groups')}>Grupos</button>
+          <button className={tab === 'users' ? 'is-active' : ''} onClick={() => setTab('users')}>Usuarios</button>
+        </div>
+
+        {tab === 'groups' ? <GroupsTab onChange={loadStats} /> : <UsersTab onChange={loadStats} />}
+      </main>
     </div>
   );
 }

@@ -1,34 +1,20 @@
-import React from 'react';
-
 /**
- * StatusBadge Component
- * 
- * Muestra visualmente el estado de conexión del dispositivo ESP32.
- * 
- * Props:
- * @param {'connected' | 'disconnected' | 'searching' | 'error'} status - Estado actual del dispositivo
+ * Indicador de estado de conexión.
+ * @param {'connected' | 'disconnected' | 'searching' | 'error'} status
+ * @param {string} [label] texto opcional (si no, se usa uno por defecto)
  */
-export default function StatusBadge({ status = 'disconnected' }) {
-  const getStatusConfig = () => {
-    switch (status) {
-      case 'connected':
-        return { label: 'Conectado', className: 'status-connected', icon: '●' };
-      case 'searching':
-        return { label: 'Buscando...', className: 'status-searching', icon: '◌' };
-      case 'error':
-        return { label: 'Error de conexión', className: 'status-error', icon: '✖' };
-      case 'disconnected':
-      default:
-        return { label: 'Desconectado', className: 'status-disconnected', icon: '○' };
-    }
-  };
+const CONFIG = {
+  connected: 'Conectado',
+  searching: 'Buscando…',
+  error: 'Error de conexión',
+  disconnected: 'Desconectado'
+};
 
-  const { label, className, icon } = getStatusConfig();
-
+export default function StatusBadge({ status = 'disconnected', label }) {
   return (
-    <span className={`status-badge ${className}`}>
-      <span className="status-icon">{icon}</span>
-      <span className="status-text">{label}</span>
+    <span className={`status-badge status-${status}`}>
+      <span className="status-dot" aria-hidden="true" />
+      {label || CONFIG[status] || CONFIG.disconnected}
     </span>
   );
 }

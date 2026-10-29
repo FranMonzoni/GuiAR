@@ -1,111 +1,94 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase/firebase';
+import { authApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
+/**
+ * Sesión del usuario.
+ *  - firebaseUser: sesión de Firebase (existe apenas inicia sesión)
+ *  - user:         usuario del backend (rol, grupo…). Se carga después.
+ *  - loading:      true hasta saber si hay sesión y cargar el usuario
+ */
 export function AuthProvider({ children }) {
-  const [firebaseUser, setFirebaseUser] = useState(null); // usuario Firebase
-  const [dbUser, setDbUser]             = useState(null); // usuario en SQLite
-  const [token, setToken]               = useState(null); // Firebase ID Token
-  const [loading, setLoading]           = useState(true);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState(null);
 
-  // Observador de estado de Firebase Auth
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        setFirebaseUser(fbUser);
-        const idToken = await fbUser.getIdToken();
-        setToken(idToken);
-        // Sincronizar con el backend (crea el usuario en SQLite si no existe)
-        await syncWithBackend(idToken);
-      } else {
-        setFirebaseUser(null);
-        setDbUser(null);
-        setToken(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+  const refreshUser = useCallback(async () => {
+    try {
+      const data = await authApi.me();
+      setUser(data.user);
+      setSyncError(null);
+      return data.user;
+    } catch (err) {
+      setSyncError(err.message);
+      return null;
+    }
   }, []);
 
-  async function syncWithBackend(idToken) {
-    try {
-      const res = await fetch(`${API}/api/auth/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDbUser(data.user);
-      }
-    } catch (err) {
-      console.error('[AuthContext] Error sincronizando con backend:', err);
+  useEffect(() => {
+    // Se carga el usuario del backend ANTES de marcar la sesión como iniciada,
+    // así las rutas nunca ven "sesión sí, usuario no" (rol/grupo desconocidos).
+    return onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) await refreshUser();
+      else setUser(null);
+      setFirebaseUser(fbUser);
+      setLoading(false);
+    });
+  }, [refreshUser]);
+
+  async function login(email, password) {
+    await signInWithEmailAndPassword(auth, email, password);
+  }
+
+  async function register(email, password, displayName) {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    if (displayName) {
+      await updateProfile(cred.user, { displayName });
+      await authApi.updateMe(displayName).then((d) => setUser(d.user)).catch(() => {});
     }
   }
 
-  /**
-   * Obtiene un token fresco (Firebase renueva automáticamente, pero esto fuerza refresh)
-   */
-  async function getFreshToken() {
-    if (!auth.currentUser) return null;
-    const idToken = await auth.currentUser.getIdToken(true);
-    setToken(idToken);
-    return idToken;
+  async function updateName(displayName) {
+    const data = await authApi.updateMe(displayName);
+    setUser(data.user);
   }
 
-  async function login(email, password) {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    const idToken = await cred.user.getIdToken();
-    setToken(idToken);
-    await syncWithBackend(idToken);
-    return cred.user;
-  }
-
-  async function register(email, password) {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    const idToken = await cred.user.getIdToken();
-    setToken(idToken);
-    await syncWithBackend(idToken);
-    return cred.user;
-  }
-
-  async function logout() {
-    await signOut(auth);
-    setFirebaseUser(null);
-    setDbUser(null);
-    setToken(null);
-  }
+  const resetPassword = (email) => sendPasswordResetEmail(auth, email);
+  const logout = () => signOut(auth);
 
   return (
-    <AuthContext.Provider value={{
-      firebaseUser,
-      user: dbUser,       // alias conveniente para la app
-      dbUser,
-      token,
-      loading,
-      login,
-      register,
-      logout,
-      getFreshToken,
-      syncWithBackend
-    }}>
+    <AuthContext.Provider
+      value={{
+        firebaseUser,
+        user,
+        loading,
+        syncError,
+        isAdmin: user?.role === 'ADMIN',
+        login,
+        register,
+        logout,
+        resetPassword,
+        refreshUser,
+        updateName
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
+// oxlint-disable-next-line react/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>');

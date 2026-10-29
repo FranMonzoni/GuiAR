@@ -1,154 +1,69 @@
-# GuiAR Web - Estructura Base del Proyecto
+# GuiAR Web
 
-**guiar-web** es la interfaz web frontal para el proyecto **GuiAR**, un sistema de navegación asistida y control e interacción con un dispositivo físico basado en microcontrolador **ESP32**.
+Interfaz web de **GuiAR**: cada persona lleva un dispositivo ESP32 (GPS + magnetómetro + acelerómetro + LoRa) cuyo aro LED apunta hacia los demás miembros de su grupo. La web sirve para:
 
----
+- Crear una cuenta e iniciar sesión (Firebase Auth).
+- Crear un grupo o unirse con un **código de invitación**. Cada persona está en un solo grupo.
+- Ver el **mapa en vivo** del grupo: posición, rumbo (magnetómetro), batería, señal LoRa, distancia a vos y hace cuánto reportó cada uno.
+- Ver los datos que necesitan la app y la ESP32: **ID del grupo** y **clave de cifrado AES-256** (solo para miembros).
+- **Panel de administración** (rol ADMIN): grupos, miembros y usuarios. No muestra ubicaciones.
 
-## 🎯 Objetivo del Proyecto
+El backend (API REST + WebSocket) está en [guiar-backend](https://github.com/FranMonzoni/guiar-backend), con la documentación completa del protocolo.
 
-El objetivo principal de esta etapa es proporcionar la **arquitectura inicial, estructura base y organización de carpetas** profesional, modular y escalable para la futura aplicación web de GuiAR.
+## Puesta en marcha
 
-La aplicación está diseñada siguiendo una estricta separación de responsabilidades para garantizar que la capa de interfaz de usuario nunca interactúe directamente con el dispositivo físico, sino a través de servicios centralizados y manejadores de estado.
-
----
-
-## 🛠️ Tecnologías Utilizadas
-
-- **React** (v18+)
-- **Vite** (Build Tool & Dev Server)
-- **JavaScript (ES6+)** (Sin TypeScript)
-- **React Router DOM** (Manejo de ruteo y navegación SPA)
-- **CSS3 Vanilla** (Variables CSS, Flexbox, Grid)
-- **Fetch API** (Preparado para la futura comunicación HTTP/REST)
-
----
-
-## 📂 Estructura de Carpetas
-
-```text
-guiar-web/
-│
-├── src/
-│   ├── assets/              # Archivos estáticos, imágenes, logos e imagotipos
-│   │   └── README.md
-│   │
-│   ├── components/          # Componentes UI reutilizables
-│   │   ├── Header.jsx       # Encabezado principal y navegación
-│   │   ├── StatusBadge.jsx  # Badge visual para estados de conexión
-│   │   └── ColorPicker.jsx  # Selector de color para el aro LED
-│   │
-│   ├── pages/               # Páginas/vistas principales de la aplicación
-│   │   ├── UserView.jsx     # Vista principal de usuario final
-│   │   └── AdminView.jsx    # Vista técnica y de diagnóstico
-│   │
-│   ├── services/            # Capa de comunicación de red
-│   │   └── esp32Api.js      # Stubs de API HTTP y endpoints de la ESP32
-│   │
-│   ├── context/             # Estado global de React
-│   │   └── DeviceContext.jsx# Contexto centralizado del dispositivo ESP32
-│   │
-│   ├── App.jsx              # Ruteo principal y contenedor de la aplicación
-│   ├── index.css            # Estilos globales y tokens del sistema de diseño
-│   └── main.jsx             # Punto de entrada de la aplicación React
-│
-├── public/                  # Recursos públicos estáticos servir por servidor web
-├── package.json             # Manifiesto de dependencias y scripts npm
-├── vite.config.js           # Configuración de Vite
-└── README.md                # Documentación del proyecto
+```bash
+npm install
+cp .env.example .env    # datos del proyecto de Firebase + URL del backend
+npm run dev             # http://localhost:5173
 ```
 
-### Responsabilidad de cada carpeta:
+Variables:
 
-- **`src/services/`**: Centraliza **TODA** la comunicación de red con la ESP32 mediante la Fetch API. Los componentes y páginas nunca realizan `fetch()` directos.
-- **`src/context/`**: Actúa como intermediario entre la capa de presentación y la capa de servicios, manteniendo el estado reactivo del dispositivo (`connected`, `deviceIp`, `ledColor`, etc.).
-- **`src/components/`**: Bloques visuales modulares y reutilizables sin lógica de negocio.
-- **`src/pages/`**: Vistas completas (`UserView`, `AdminView`) que componen la experiencia del usuario o del administrador.
+| Variable | Ejemplo |
+|---|---|
+| `VITE_API_URL` | `http://localhost:3001` |
+| `VITE_WS_URL` | `ws://localhost:3001` (opcional: se deriva de `VITE_API_URL`) |
+| `VITE_FIREBASE_*` | Configuración web de Firebase |
 
----
-
-## 🏗️ Arquitectura de Comunicación con ESP32
-
-La arquitectura del proyecto exige desacoplamiento total entre la UI y el hardware:
+## Estructura
 
 ```text
-                    React (UI)
-                      │
-          ┌───────────┴───────────┐
-          │                       │
-      UserView                AdminView
-          │                       │
-          └───────────┬───────────┘
-                      │
-              DeviceContext (Estado)
-                      │
-                esp32Api.js (Servicio)
-                      │
-                  HTTP/REST (Fetch API)
-                      │
-                     ESP32 (Hardware)
+src/
+├── App.jsx                  # Rutas: /login, / (mapa y grupo), /admin
+├── firebase/firebase.js     # Inicialización de Firebase
+├── services/
+│   ├── api.js               # TODA la comunicación HTTP con el backend
+│   └── esp32Api.js          # Stubs para hablar directo con la ESP32 (futuro)
+├── context/
+│   ├── AuthContext.jsx      # Sesión + usuario del backend (rol, grupo)
+│   ├── GroupContext.jsx     # Grupo, ubicaciones y WebSocket con reconexión
+│   └── DeviceContext.jsx    # Estado de la ESP32 (futuro)
+├── components/
+│   ├── AppHeader.jsx        # Encabezado común
+│   ├── GroupMap.jsx         # Mapa Leaflet con marcadores por miembro
+│   ├── GroupSetup.jsx       # Crear / unirse a un grupo
+│   ├── GroupSettings.jsx    # Código, ID, clave, miembros, salir
+│   ├── CopyButton.jsx, StatusBadge.jsx, ColorPicker.jsx
+├── pages/
+│   ├── AuthPage.jsx         # Login, registro, recuperar contraseña
+│   ├── UserView.jsx         # Mapa + lista de miembros
+│   └── AdminView.jsx        # Panel de administración
+└── utils/format.js          # Fechas relativas, distancias, colores por usuario
 ```
 
-### Regla fundamental:
-NO realizar: `Component -> fetch() -> ESP32`
+### Regla de arquitectura
 
-Forma correcta: `Component -> DeviceContext -> esp32Api.js -> fetch() -> ESP32`
+Los componentes nunca hacen `fetch()` ni abren sockets directamente:
 
----
+```
+Componente → Context (AuthContext / GroupContext) → services/api.js → Backend
+```
 
-## 🚀 Cómo Instalar y Ejecutar
+## Estado
 
-### Requisitos previos
-- Node.js (v18 o superior)
-- npm
-
-### Pasos de instalación
-
-1. Clonar el repositorio:
-   ```bash
-   git clone https://github.com/FranMonzoni/GuiAR.git
-   cd GuiAR/guiar-web
-   ```
-
-2. Instalar dependencias:
-   ```bash
-   npm install
-   ```
-
-3. Iniciar el servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
-
-4. Abrir en el navegador:
-   Acceder a la URL indicada en la consola (usualmente `http://localhost:5173`).
-
----
-
-## 📌 Estado Actual del Proyecto
-
-El proyecto se encuentra en la **Fase 1: Construcción de la Arquitectura Inicial**.
-
-- ✅ Proyecto React + Vite estructurado.
-- ✅ Ruteo configurado (`/` -> `UserView`, `/admin` -> `AdminView`).
-- ✅ Componentes base implementados (`Header`, `StatusBadge`, `ColorPicker`).
-- ✅ `DeviceContext` preparado con estado inicial y funciones placeholder.
-- ✅ `esp32Api.js` preparado con stubs asíncronos y comentarios `TODO`.
-- ⚠️ Deliberadamente no incluye comunicación HTTP real, base de datos, autenticación ni lógica de backend.
-
----
-
-## 📋 Próximas etapas
-
-- Definir protocolo de comunicación con ESP32.
-- Definir endpoints.
-- Implementar conexión.
-- Implementar vinculación del dispositivo.
-- Obtener información de la ESP32.
-- Obtener estado de conexión.
-- Configurar IP.
-- Controlar aro LED.
-- Implementar diagnóstico.
-- Manejo de errores.
-- Persistencia de configuración.
-- Implementar funcionalidades de usuario.
-- Implementar funcionalidades administrativas.
+- ✅ Login/registro/recuperación de contraseña
+- ✅ Grupos con código de invitación, un grupo por persona, salir, expulsar, regenerar código
+- ✅ Mapa en vivo por WebSocket con estado inicial, presencia y reconexión automática
+- ✅ Panel de administración sin acceso a ubicaciones
+- ⏳ App móvil que lee la ESP32 y reporta por WebSocket (ver protocolo en el README del backend)
