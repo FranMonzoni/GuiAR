@@ -1,0 +1,201 @@
+.group-panel {
+  padding: 0.5rem 0;
+}
+
+.group-panel h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.group-panel__desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.group-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.group-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* Info rows */
+.group-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.group-info__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.group-info__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.group-info__value {
+  font-size: 0.85rem;
+  background: var(--bg-primary);
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.375rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.group-info__hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.joinkey-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.joinkey {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  background: var(--bg-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+}
+
+.btn-copy {
+  padding: 0.4rem 0.75rem;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-copy:hover { background: var(--accent); color: #fff; }
+
+.owner-badge {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Miembros */
+.members-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.members-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.6rem 0.875rem;
+  background: var(--bg-secondary);
+  border-radius: 0.5rem;
+}
+
+.member-avatar { font-size: 1.1rem; }
+
+.member-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.member-email {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.member-role {
+  font-size: 0.7rem;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* Acciones sin grupo */
+.group-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn-secondary {
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.btn-secondary:hover { background: var(--border); }
+
+/* Formulario */
+.group-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.form-error {
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #c53030;
+  padding: 0.6rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  margin: 0;
+}

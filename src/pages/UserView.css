@@ -1,0 +1,155 @@
+.user-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header */
+.uv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.uv-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.uv-group-name {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.uv-header__right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.uv-email {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.btn-ghost {
+  padding: 0.4rem 0.875rem;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-secondary);
+}
+
+/* Tabs */
+.uv-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.uv-tabs button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.uv-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Sin grupo */
+.uv-no-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Mapa */
+.uv-map-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.uv-map-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.uv-map-bar__members {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ws-dot--connected    { background: #38a169; }
+.ws-dot--connecting   { background: #d69e2e; }
+.ws-dot--disconnected { background: #e53e3e; }
+.ws-dot--error        { background: #e53e3e; }
+
+.leaflet-map {
+  flex: 1;
+  min-height: 400px;
+  height: calc(100vh - 180px);
+  z-index: 0;
+}
+
+.uv-map-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Tab grupo */
+.uv-group-tab {
+  padding: 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .uv-header { padding: 0.75rem 1rem; }
+  .uv-tabs button { padding: 0.625rem 1rem; font-size: 0.85rem; }
+  .leaflet-map { height: calc(100vh - 200px); }
+}

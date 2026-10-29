@@ -1,0 +1,57 @@
+/* ── Reset & Box Model ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── CSS Variables ─────────────────────────────────────────────── */
+:root {
+  --accent:        #3b82f6;
+  --accent-hover:  #2563eb;
+
+  --bg-primary:    #ffffff;
+  --bg-secondary:  #f8fafc;
+
+  --text-primary:  #1a202c;
+  --text-secondary:#4a5568;
+  --text-muted:    #a0aec0;
+
+  --border:        #e2e8f0;
+
+  --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Base ──────────────────────────────────────────────────────── */
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utility ──────────────────────────────────────────────────── */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* ── Shared form inputs (usados en varias páginas) ─────────────── */
+input, button, select, textarea {
+  font-family: inherit;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Leaflet z-index fix ──────────────────────────────────────── */
+.leaflet-pane { z-index: 0; }
+.leaflet-top, .leaflet-bottom { z-index: 1; }
+
+/* ── Scrollbar suave ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
