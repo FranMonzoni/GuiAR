@@ -10,9 +10,16 @@ import AdminView from './pages/AdminView';
  * Ruta protegida: redirige a /login si no hay usuario autenticado.
  */
 function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { firebaseUser, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando…</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!firebaseUser) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function GuestRoute({ children }) {
+  const { firebaseUser, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando…</div>;
+  if (firebaseUser) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -20,9 +27,10 @@ function PrivateRoute({ children }) {
  * Ruta de admin: solo para usuarios con role "ADMIN".
  */
 function AdminRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { firebaseUser, user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando…</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!firebaseUser) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
   if (user.role !== 'ADMIN') return <Navigate to="/" replace />;
   return children;
 }
@@ -30,7 +38,14 @@ function AdminRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<AuthPage />} />
+      <Route
+        path="/login"
+        element={
+          <GuestRoute>
+            <AuthPage />
+          </GuestRoute>
+        }
+      />
 
       <Route
         path="/"

@@ -19,7 +19,7 @@ L.Icon.Default.mergeOptions({
 const DEFAULT_CENTER = [-34.6037, -58.3816];
 
 export default function UserView() {
-  const { user, logout }                                       = useAuth();
+  const { user, firebaseUser, logout }                          = useAuth();
   const { group, groupLoading, memberLocations, wsStatus, fetchGroup } = useGroup();
   const [tab, setTab] = useState('map');
 
@@ -46,7 +46,7 @@ export default function UserView() {
         </div>
         <div className="uv-header__right">
           <StatusBadge status={wsStatusBadge} />
-          <span className="uv-email">{user?.email}</span>
+          <span className="uv-email">{user?.email || firebaseUser?.email}</span>
           <button className="btn-ghost" onClick={logout}>Salir</button>
         </div>
       </header>
