@@ -26,6 +26,15 @@ Variables:
 | `VITE_WS_URL` | `ws://localhost:3001` (opcional: se deriva de `VITE_API_URL`) |
 | `VITE_FIREBASE_*` | Configuración web de Firebase |
 
+## Deploy en Vercel
+
+1. Importar el repo en Vercel. `vercel.json` ya configura la build y redirige las rutas a `index.html`.
+2. Cargar en **Settings → Environment Variables** todas las variables de `.env.example`, con `VITE_API_URL` en `https://` y `VITE_WS_URL` en `wss://`. Si falta alguna, o el backend no usa HTTPS, la build falla a propósito.
+3. En el backend, agregar el dominio de Vercel a `CORS_ORIGINS`.
+4. En Firebase, agregar el dominio en **Authentication → Settings → Authorized domains**.
+
+Las variables `VITE_*` se incorporan al compilar: si se cambia alguna, hay que volver a deployar.
+
 ## Estructura
 
 ```text
