@@ -11,10 +11,11 @@ const CONFIG = {
 };
 
 export default function StatusBadge({ status = 'disconnected', label }) {
+  const text = label || CONFIG[status] || CONFIG.disconnected;
   return (
-    <span className={`status-badge status-${status}`}>
+    <span className={`status-badge status-${status}`} title={text}>
       <span className="status-dot" aria-hidden="true" />
-      {label || CONFIG[status] || CONFIG.disconnected}
+      <span className="status-badge__label">{text}</span>
     </span>
   );
 }

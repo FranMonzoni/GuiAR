@@ -46,6 +46,7 @@ export function GroupProvider({ children }) {
 
   useEffect(() => {
     if (!user) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- carga desde el backend al entrar
     fetchGroup();
   }, [user?.id, user?.groupId, fetchGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -76,6 +77,8 @@ export function GroupProvider({ children }) {
     handlersRef.current = {
       snapshot(msg) {
         setLocations(Object.fromEntries(msg.locations.map((l) => [l.userId, l])));
+        // Al reconectar puede haber altas y bajas que no se recibieron mientras estaba caído
+        setGroup((g) => (g ? { ...g, ...msg.group } : g));
         setOnline(new Set(msg.group.members.filter((m) => m.online).map((m) => m.id)));
       },
       location_update({ location }) {
@@ -108,10 +111,28 @@ export function GroupProvider({ children }) {
     let timer = null;
     let stopped = false;
 
+    function scheduleReconnect() {
+      // 1 s, 2 s, 4 s… hasta 30 s
+      const delay = Math.min(30_000, 1000 * 2 ** retry++);
+      setWsStatus('reconnecting');
+      timer = setTimeout(connect, delay);
+    }
+
     async function connect() {
       setWsStatus(retry ? 'reconnecting' : 'connecting');
-      const token = await getToken();
-      if (stopped || !token) return;
+      let token;
+      try {
+        token = await getToken();
+      } catch {
+        // Sin red Firebase no puede renovar el token: es un corte más, no un error final
+        if (!stopped) scheduleReconnect();
+        return;
+      }
+      if (stopped) return;
+      if (!token) {
+        setWsStatus('idle');
+        return;
+      }
 
       ws = new WebSocket(`${WS_URL}/ws/${groupId}?token=${encodeURIComponent(token)}`);
       ws.onopen = () => { retry = 0; setWsStatus('connected'); };
@@ -127,10 +148,7 @@ export function GroupProvider({ children }) {
           fetchGroup().then((g) => { if (!g) leftGroup(event.reason); });
           return;
         }
-        // 1 s, 2 s, 4 s… hasta 30 s
-        const delay = Math.min(30_000, 1000 * 2 ** retry++);
-        setWsStatus('reconnecting');
-        timer = setTimeout(connect, delay);
+        scheduleReconnect();
       };
     }
 

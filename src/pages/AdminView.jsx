@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { adminApi } from '../services/api';
 import AppHeader from '../components/AppHeader';
@@ -89,8 +89,13 @@ function GroupsTab({ onChange }) {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
 
+  const lastRequest = useRef(0);
+
   const load = useCallback(() => {
-    adminApi.groups(q).then((d) => { setGroups(d.groups); setError(''); }).catch((e) => setError(e.message));
+    const request = ++lastRequest.current;
+    adminApi.groups(q)
+      .then((d) => { if (request === lastRequest.current) { setGroups(d.groups); setError(''); } })
+      .catch((e) => { if (request === lastRequest.current) setError(e.message); });
   }, [q]);
   useEffect(load, [load]);
 
@@ -119,11 +124,11 @@ function GroupsTab({ onChange }) {
                 {groups.map((g) => (
                   <tr key={g.id} className={selected === g.id ? 'is-selected' : ''} onClick={() => setSelected(g.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelected(g.id)}>
                     <td><strong>{g.name}</strong><span className="muted small block mono-sm">{g.id}</span></td>
-                    <td>{g.owner?.displayName}<span className="muted small block">{g.owner?.email}</span></td>
-                    <td className="num">{g.memberCount}</td>
-                    <td className="num">{g.onlineCount > 0 ? <span className="pill pill-live">{g.onlineCount}</span> : <span className="muted">0</span>}</td>
-                    <td className="muted">{g.lastActivityAt ? timeAgo(g.lastActivityAt) : 'Nunca'}</td>
-                    <td className="muted">{formatDate(g.createdAt)}</td>
+                    <td data-label="Creador"><span>{g.owner?.displayName}<span className="muted small block">{g.owner?.email}</span></span></td>
+                    <td className="num" data-label="Miembros">{g.memberCount}</td>
+                    <td className="num" data-label="En línea">{g.onlineCount > 0 ? <span className="pill pill-live">{g.onlineCount}</span> : <span className="muted">0</span>}</td>
+                    <td className="muted" data-label="Actividad">{g.lastActivityAt ? timeAgo(g.lastActivityAt) : 'Nunca'}</td>
+                    <td className="muted" data-label="Creado">{formatDate(g.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -143,8 +148,13 @@ function UsersTab({ onChange }) {
   const [users, setUsers] = useState(null);
   const [error, setError] = useState('');
 
+  const lastRequest = useRef(0);
+
   const load = useCallback(() => {
-    adminApi.users(q).then((d) => { setUsers(d.users); setError(''); }).catch((e) => setError(e.message));
+    const request = ++lastRequest.current;
+    adminApi.users(q)
+      .then((d) => { if (request === lastRequest.current) { setUsers(d.users); setError(''); } })
+      .catch((e) => { if (request === lastRequest.current) setError(e.message); });
   }, [q]);
   useEffect(load, [load]);
 
@@ -183,15 +193,15 @@ function UsersTab({ onChange }) {
         <div className="table-scroll">
           <table className="table">
             <thead>
-              <tr><th>Usuario</th><th>Rol</th><th>Grupo</th><th>Registrado</th><th /></tr>
+              <tr><th>Usuario</th><th>Rol</th><th>Grupo</th><th>Registrado</th><th aria-label="Acciones" /></tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
                   <td><strong>{u.displayName}</strong><span className="muted small block">{u.email || '—'}</span></td>
-                  <td><span className={`pill ${u.role === 'ADMIN' ? 'pill-admin' : ''}`}>{u.role === 'ADMIN' ? 'Admin' : 'Usuario'}</span></td>
-                  <td>{u.group?.name || <span className="muted">Sin grupo</span>}</td>
-                  <td className="muted">{formatDate(u.createdAt)}</td>
+                  <td data-label="Rol"><span className={`pill ${u.role === 'ADMIN' ? 'pill-admin' : ''}`}>{u.role === 'ADMIN' ? 'Admin' : 'Usuario'}</span></td>
+                  <td data-label="Grupo">{u.group?.name || <span className="muted">Sin grupo</span>}</td>
+                  <td className="muted" data-label="Registrado">{formatDate(u.createdAt)}</td>
                   <td className="actions">
                     {u.id !== me?.id && (
                       <>

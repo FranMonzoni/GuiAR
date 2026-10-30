@@ -7,6 +7,9 @@ import { colorFor, initials, isStale, timeAgo } from '../utils/format';
 const DEFAULT_CENTER = [-31.4201, -64.1888]; // Córdoba
 const DEFAULT_ZOOM = 13;
 
+/** El nombre lo elige cada usuario y `html` de divIcon se inserta sin escapar. */
+const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
 /** Marcador redondo con iniciales, color del miembro y flecha de rumbo (magnetómetro). */
 function memberIcon({ name, color, heading, stale, isMe }) {
   const arrow = heading != null
@@ -19,7 +22,7 @@ function memberIcon({ name, color, heading, stale, isMe }) {
     iconAnchor: [20, 20],
     popupAnchor: [0, -20],
     tooltipAnchor: [0, 22],
-    html: `<div class="${cls}" style="--c:${color}">${arrow}<span class="gm-dot">${initials(name)}</span></div>`
+    html: `<div class="${cls}" style="--c:${color}">${arrow}<span class="gm-dot">${escapeHtml(initials(name))}</span></div>`
   });
 }
 
@@ -47,6 +50,39 @@ function FlyTo({ target }) {
   return null;
 }
 
+function MemberMarker({ loc, isMe, now }) {
+  const stale = isStale(loc.timestamp, now);
+  const color = colorFor(loc.userId);
+  // `now` cambia cada 5 s: un ícono nuevo reemplazaría el DOM y reiniciaría la animación
+  const icon = useMemo(
+    () => memberIcon({ name: loc.displayName, color, heading: loc.heading, stale, isMe }),
+    [loc.displayName, color, loc.heading, stale, isMe]
+  );
+
+  return (
+    <Marker position={[loc.latitude, loc.longitude]} icon={icon} zIndexOffset={isMe ? 1000 : 0}>
+      <Tooltip direction="bottom" permanent className="gm-label">
+        {isMe ? 'Vos' : loc.displayName}
+      </Tooltip>
+      <Popup>
+        <div className="gm-popup">
+          <strong>{loc.displayName}</strong>
+          <span className="gm-popup__time">{timeAgo(loc.timestamp, now)} · {loc.deviceId}</span>
+          <dl>
+            <dt>Posición</dt><dd>{loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}</dd>
+            {loc.heading != null && <><dt>Rumbo</dt><dd>{Math.round(loc.heading)}°</dd></>}
+            {loc.speed != null && <><dt>Velocidad</dt><dd>{(loc.speed * 3.6).toFixed(1)} km/h</dd></>}
+            {loc.accuracy != null && <><dt>Precisión</dt><dd>±{Math.round(loc.accuracy)} m</dd></>}
+            {loc.satellites != null && <><dt>Satélites</dt><dd>{loc.satellites}</dd></>}
+            {loc.battery != null && <><dt>Batería</dt><dd>{Math.round(loc.battery)}%</dd></>}
+            {loc.signal != null && <><dt>Señal LoRa</dt><dd>{loc.signal} dBm</dd></>}
+          </dl>
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
 export default function GroupMap({ locations, meId, focus, fitKey, now }) {
   const points = useMemo(() => locations.map((l) => [l.latitude, l.longitude]), [locations]);
 
@@ -61,38 +97,9 @@ export default function GroupMap({ locations, meId, focus, fitKey, now }) {
       <AutoFit points={points} fitKey={fitKey} />
       <FlyTo target={focus} />
 
-      {locations.map((loc) => {
-        const stale = isStale(loc.timestamp, now);
-        const icon = memberIcon({
-          name: loc.displayName,
-          color: colorFor(loc.userId),
-          heading: loc.heading,
-          stale,
-          isMe: loc.userId === meId
-        });
-        return (
-          <Marker key={loc.userId} position={[loc.latitude, loc.longitude]} icon={icon} zIndexOffset={loc.userId === meId ? 1000 : 0}>
-            <Tooltip direction="bottom" permanent className="gm-label">
-              {loc.userId === meId ? 'Vos' : loc.displayName}
-            </Tooltip>
-            <Popup>
-              <div className="gm-popup">
-                <strong>{loc.displayName}</strong>
-                <span className="gm-popup__time">{timeAgo(loc.timestamp, now)} · {loc.deviceId}</span>
-                <dl>
-                  <dt>Posición</dt><dd>{loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}</dd>
-                  {loc.heading != null && <><dt>Rumbo</dt><dd>{Math.round(loc.heading)}°</dd></>}
-                  {loc.speed != null && <><dt>Velocidad</dt><dd>{(loc.speed * 3.6).toFixed(1)} km/h</dd></>}
-                  {loc.accuracy != null && <><dt>Precisión</dt><dd>±{Math.round(loc.accuracy)} m</dd></>}
-                  {loc.satellites != null && <><dt>Satélites</dt><dd>{loc.satellites}</dd></>}
-                  {loc.battery != null && <><dt>Batería</dt><dd>{Math.round(loc.battery)}%</dd></>}
-                  {loc.signal != null && <><dt>Señal LoRa</dt><dd>{loc.signal} dBm</dd></>}
-                </dl>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
+      {locations.map((loc) => (
+        <MemberMarker key={loc.userId} loc={loc} isMe={loc.userId === meId} now={now} />
+      ))}
     </MapContainer>
   );
 }

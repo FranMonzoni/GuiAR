@@ -54,7 +54,7 @@ function MemberRow({ member, loc, isMe, distance, now, onFocus }) {
 
 export default function UserView() {
   const { user, syncError, refreshUser } = useAuth();
-  const { group, groupLoading, groupError, locations, wsStatus, notice, dismissNotice } = useGroup();
+  const { group, groupLoading, groupError, fetchGroup, locations, wsStatus, notice, dismissNotice } = useGroup();
   const [panel, setPanel] = useState('members'); // 'members' | 'settings'
   const [focus, setFocus] = useState(null);
   const [fitKey, setFitKey] = useState(0);
@@ -115,7 +115,14 @@ export default function UserView() {
             <button className="btn btn-link small" onClick={dismissNotice}>Cerrar</button>
           </div>
         )}
-        {groupError ? <p className="alert alert-error center-block">{groupError}</p> : <GroupSetup />}
+        {groupError ? (
+          <div className="center-block stack">
+            <p className="alert alert-error">{groupError}</p>
+            <button className="btn btn-primary" onClick={fetchGroup}>Reintentar</button>
+          </div>
+        ) : (
+          <GroupSetup />
+        )}
       </div>
     );
   }
@@ -148,7 +155,7 @@ export default function UserView() {
                       isMe={m.id === user?.id}
                       distance={distance}
                       now={now}
-                      onFocus={setFocus}
+                      onFocus={(l) => setFocus({ ...l })} // objeto nuevo: tocar al mismo miembro vuelve a centrarlo
                     />
                   );
                 })}

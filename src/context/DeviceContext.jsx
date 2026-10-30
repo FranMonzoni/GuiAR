@@ -7,6 +7,7 @@ import * as esp32Api from '../services/esp32Api';
  * Centraliza la información del dispositivo y sirve como intermediario
  * entre la capa visual (páginas y componentes) y el servicio de red (esp32Api.js).
  */
+// oxlint-disable-next-line react/only-export-components
 export const DeviceContext = createContext(null);
 
 export function DeviceProvider({ children }) {
@@ -117,6 +118,7 @@ export function DeviceProvider({ children }) {
 /**
  * Hook personalizado para consumir el DeviceContext de manera sencilla
  */
+// oxlint-disable-next-line react/only-export-components
 export function useDevice() {
   const context = useContext(DeviceContext);
   if (!context) {

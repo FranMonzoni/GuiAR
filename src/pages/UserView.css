@@ -1,11 +1,12 @@
 /* ── Mapa + barra lateral ───────────────────────────────────────── */
-.page--map { height: 100%; }
+.page--map { height: 100%; height: 100dvh; }
 
 .map-layout {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .sidebar {
@@ -18,7 +19,8 @@
   gap: 12px;
 }
 
-.map-wrap { position: relative; min-height: 0; }
+/* isolate: sin esto los z-index de Leaflet (400+) compiten con el encabezado */
+.map-wrap { position: relative; min-height: 0; isolation: isolate; }
 .group-map { position: absolute; inset: 0; }
 
 .btn-floating {
@@ -30,14 +32,22 @@
   position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 500;
   padding: 7px 14px; border-radius: 999px;
   background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--border);
-  font-size: 0.85rem; color: var(--muted);
+  font-size: 0.85rem; color: var(--muted); white-space: nowrap;
 }
 
-@media (max-width: 860px) {
-  .page--map { height: auto; }
-  .map-layout { grid-template-columns: 1fr; grid-template-rows: 55vh auto; }
+/* Vertical: mapa arriba y lista con scroll propio, así el mapa siempre queda a la vista */
+@media (max-width: 860px) and (orientation: portrait) {
+  .map-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 45fr) minmax(0, 55fr); }
   .map-wrap { order: -1; }
-  .sidebar { border-right: none; border-top: 1px solid var(--border); overflow: visible; }
+  .sidebar { border-right: none; border-top: 1px solid var(--border); }
+}
+/* Celular acostado: poca altura, se mantienen las dos columnas */
+@media (max-width: 860px) and (orientation: landscape) {
+  .map-layout { grid-template-columns: minmax(230px, 38%) minmax(0, 1fr); }
+  .sidebar { padding: 10px; }
+}
+@media (max-width: 640px) {
+  .btn-floating { top: 10px; right: 10px; padding: 6px 12px; }
 }
 
 /* ── Lista de miembros ──────────────────────────────────────────── */
@@ -86,20 +96,22 @@
 .settings-block:last-of-type { border-bottom: none; }
 .settings-block .btn-link { align-self: flex-start; }
 
-.invite-code { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
+.invite-code { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
 .invite-code code { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.15em; color: var(--accent); }
 
+.settings-block form { flex-wrap: wrap; }
 .kv { display: flex; flex-direction: column; gap: 4px; }
 .kv > span { font-size: 0.82rem; color: var(--text-2); font-weight: 500; }
 .kv-value { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.kv-value code { flex: 1; min-width: 0; padding: 6px 8px; background: var(--surface-2); border-radius: 6px; }
+.kv-value code { flex: 1 1 160px; min-width: 0; padding: 6px 8px; background: var(--surface-2); border-radius: 6px; }
 
 /* ── Sin grupo ──────────────────────────────────────────────────── */
-.setup { flex: 1; display: grid; place-items: start center; padding: 48px 16px; }
-.setup-card { width: 100%; max-width: 440px; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+.setup { flex: 1; display: grid; place-items: start center; padding: clamp(16px, 6vw, 48px) 16px; }
+.setup-card { width: 100%; max-width: 440px; padding: clamp(18px, 5vw, 28px); display: flex; flex-direction: column; gap: 18px; }
 .setup-title { font-size: 1.35rem; }
 
 /* ── Marcadores del mapa ────────────────────────────────────────── */
+.leaflet-container { font-family: var(--font); }
 .gm-marker { position: relative; width: 40px; height: 40px; display: grid; place-items: center; }
 .gm-dot {
   position: relative; z-index: 2;
@@ -123,6 +135,7 @@
 .leaflet-tooltip.gm-label {
   background: rgb(15 23 42 / 0.82); color: #fff; border: none; border-radius: 6px;
   padding: 1px 7px; font-size: 0.75rem; font-weight: 600; box-shadow: none;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis;
 }
 .leaflet-tooltip.gm-label::before { display: none; }
 

@@ -2,13 +2,13 @@
   min-height: 100%;
   display: grid;
   place-items: center;
-  padding: 24px 16px;
+  padding: clamp(12px, 5vw, 24px) 16px;
   background:
     radial-gradient(1000px 500px at 50% -10%, var(--accent-soft), transparent 70%),
     var(--bg);
 }
 
-.auth-card { width: 100%; max-width: 400px; padding: 32px 28px; display: flex; flex-direction: column; gap: 20px; }
+.auth-card { width: 100%; max-width: 400px; padding: clamp(20px, 6vw, 32px) clamp(16px, 6vw, 28px); display: flex; flex-direction: column; gap: 20px; }
 
 .auth-brand { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .auth-brand h1 { font-size: 1.7rem; letter-spacing: -0.02em; margin-top: 10px; }

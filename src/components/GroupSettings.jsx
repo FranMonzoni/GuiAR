@@ -48,7 +48,7 @@ export default function GroupSettings() {
   const onRename = (e) => {
     e.preventDefault();
     act('rename', async () => {
-      await renameGroup(name);
+      await renameGroup(name.trim());
       setEditingName(false);
     });
   };
@@ -96,13 +96,13 @@ export default function GroupSettings() {
       <section className="settings-block">
         <div className="row-between">
           <h3>Nombre</h3>
-          {isOwner && !editingName && <button className="btn btn-link small" onClick={() => setEditingName(true)}>Editar</button>}
+          {isOwner && !editingName && <button className="btn btn-link small" onClick={() => { setName(group.name); setEditingName(true); }}>Editar</button>}
         </div>
         {editingName ? (
           <form className="row" onSubmit={onRename}>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} autoFocus />
             <button className="btn btn-primary btn-sm" disabled={busy === 'rename' || !name.trim()}>Guardar</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEditingName(false); setName(group.name); }}>Cancelar</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingName(false)}>Cancelar</button>
           </form>
         ) : (
           <p>{group.name}</p>

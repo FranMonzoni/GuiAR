@@ -37,7 +37,9 @@ export function colorFor(id = '') {
 
 export function initials(name = '?') {
   const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] || '?') + (parts[1]?.[0] || '')).toUpperCase();
+  // Por caracteres y no por índice, para no partir un emoji al medio
+  const first = (word = '') => [...word][0] || '';
+  return ((first(parts[0]) || '?') + first(parts[1])).toUpperCase();
 }
 
 /** Distancia en metros entre dos puntos (haversine). */
