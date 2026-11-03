@@ -6,6 +6,7 @@ import GroupMap from '../components/GroupMap';
 import GroupSetup from '../components/GroupSetup';
 import GroupSettings from '../components/GroupSettings';
 import StatusBadge from '../components/StatusBadge';
+import { DeviceDetails, DeviceSummary } from '../components/DeviceInfo';
 import { colorFor, distanceMeters, formatDistance, initials, isStale, timeAgo } from '../utils/format';
 import './UserView.css';
 
@@ -22,39 +23,56 @@ function useNow(intervalMs = 5000) {
   return now;
 }
 
-function MemberRow({ member, loc, isMe, distance, now, onFocus }) {
+function MemberRow({ member, loc, device, isMe, distance, now, open, onToggle, onFocus }) {
   const color = colorFor(member.id);
-  // "En vivo" = la ESP reportó hace menos de 2 min (aunque haya llegado por REST)
+  // "En vivo" = la pulsera reportó hace menos de 2 min (aunque haya llegado por REST)
   const live = !!loc && !isStale(loc.timestamp, now);
-  const status = !loc
-    ? 'Sin ubicación todavía'
-    : `${live ? 'En vivo' : 'Última vez'} · ${timeAgo(loc.timestamp, now)}`;
+  const parts = [!loc ? 'Sin ubicación todavía' : `${live ? 'En vivo' : 'Última vez'} · ${timeAgo(loc.timestamp, now)}`];
+  if (distance != null) parts.push(formatDistance(distance));
+  if (loc?.simulated) parts.push('simulada');
+  const detailsId = `dev-${member.id}`;
 
   return (
-    <li>
-      <button className={`member ${!loc ? 'is-empty' : ''}`} onClick={() => loc && onFocus(loc)} disabled={!loc}>
-        <span className={`avatar ${live ? 'is-live' : ''}`} style={{ '--c': color }}>
-          {initials(member.displayName)}
-        </span>
-        <span className="member__body">
-          <span className="member__name">
-            {member.displayName}
-            {isMe && <span className="muted"> (vos)</span>}
+    <li className={`member-item ${open ? 'is-open' : ''}`}>
+      <div className="member-row">
+        <button className={`member ${!loc ? 'is-empty' : ''}`} onClick={() => loc && onFocus(loc)} disabled={!loc}>
+          <span className={`avatar ${live ? 'is-live' : ''}`} style={{ '--c': color }}>
+            {initials(member.displayName)}
           </span>
-          <span className="member__status">{status}</span>
-        </span>
-        <span className="member__meta">
-          {distance != null && <span className="member__dist">{formatDistance(distance)}</span>}
-          {loc?.battery != null && <span className="member__bat">{Math.round(loc.battery)}%</span>}
-        </span>
-      </button>
+          <span className="member__body">
+            <span className="member__name">
+              {member.displayName}
+              {isMe && <span className="muted"> (vos)</span>}
+            </span>
+            <span className="member__status">{parts.join(' · ')}</span>
+          </span>
+        </button>
+        <button
+          className="member__device"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={detailsId}
+          title={open ? 'Ocultar datos de la pulsera' : 'Ver datos de la pulsera'}
+        >
+          <DeviceSummary device={device} loc={loc} />
+          <svg className="member__chev" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+      {open && (
+        <div id={detailsId}>
+          <DeviceDetails device={device} now={now} />
+        </div>
+      )}
     </li>
   );
 }
 
 export default function UserView() {
   const { user, syncError, refreshUser } = useAuth();
-  const { group, groupLoading, groupError, fetchGroup, locations, wsStatus, notice, dismissNotice } = useGroup();
+  const { group, groupLoading, groupError, fetchGroup, locations, devices, wsStatus, notice, dismissNotice } = useGroup();
+  const [openDevice, setOpenDevice] = useState(null);
   const [panel, setPanel] = useState('members'); // 'members' | 'settings'
   const [focus, setFocus] = useState(null);
   const [fitKey, setFitKey] = useState(0);
@@ -152,7 +170,10 @@ export default function UserView() {
                       key={m.id}
                       member={m}
                       loc={loc}
+                      device={devices[m.id]}
                       isMe={m.id === user?.id}
+                      open={openDevice === m.id}
+                      onToggle={() => setOpenDevice((id) => (id === m.id ? null : m.id))}
                       distance={distance}
                       now={now}
                       onFocus={(l) => setFocus({ ...l })} // objeto nuevo: tocar al mismo miembro vuelve a centrarlo

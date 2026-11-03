@@ -52,14 +52,21 @@ export const authApi = {
 };
 
 export const groupApi = {
+  // Respuesta plana: { id, name, encryption, inviteCode, ownerId, members, ... }
   getMine: () => request('/api/groups/me'),
   create: (name) => request('/api/groups', { method: 'POST', body: { name } }),
   join: (code) => request('/api/groups/join', { method: 'POST', body: { code } }),
   rename: (name) => request('/api/groups/me', { method: 'PATCH', body: { name } }),
   leave: () => request('/api/groups/me/leave', { method: 'POST' }),
   regenerateCode: () => request('/api/groups/me/invite-code', { method: 'POST' }),
+  rotateKey: () => request('/api/groups/me/encryption/rotate', { method: 'POST' }),
   kick: (userId) => request(`/api/groups/me/members/${userId}`, { method: 'DELETE' }),
   locations: () => request('/api/groups/me/locations')
+};
+
+export const deviceApi = {
+  getMine: () => request('/api/devices/me'),
+  unlink: () => request('/api/devices/me', { method: 'DELETE' })
 };
 
 export const adminApi = {

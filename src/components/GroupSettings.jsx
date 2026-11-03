@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGroup } from '../context/GroupContext';
 import CopyButton from './CopyButton';
+import { timeAgo } from '../utils/format';
 
 /** Datos del grupo: código de invitación, ID, clave de cifrado y acciones del owner. */
 export default function GroupSettings() {
   const { user } = useAuth();
-  const { group, isOwner, regenerateCode, renameGroup, kickMember, leaveGroup } = useGroup();
+  const { group, devices, isOwner, regenerateCode, rotateKey, renameGroup, kickMember, unlinkDevice, leaveGroup } = useGroup();
+  const myDevice = user ? devices[user.id] : null;
+  const enc = group.encryption;
   const [showKey, setShowKey] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(group.name);
@@ -30,8 +33,18 @@ export default function GroupSettings() {
     act('code', regenerateCode);
   };
 
+  const onRotate = () => {
+    if (!confirm('Se genera una clave nueva. Todas las pulseras del grupo tienen que recibirla desde la app. ¿Continuar?')) return;
+    act('rotate', rotateKey);
+  };
+
+  const onUnlink = () => {
+    if (!confirm(`¿Desvincular la pulsera ${myDevice.deviceId}? La próxima pulsera que mande datos desde tu cuenta queda vinculada.`)) return;
+    act('unlink', unlinkDevice);
+  };
+
   const onKick = (m) => {
-    if (!confirm(`¿Quitar a ${m.displayName} del grupo? Se borran sus ubicaciones.`)) return;
+    if (!confirm(`¿Quitar a ${m.displayName} del grupo? Se borran sus ubicaciones y se renueva la clave de cifrado.`)) return;
     act(`kick-${m.id}`, () => kickMember(m.id));
   };
 
@@ -80,17 +93,52 @@ export default function GroupSettings() {
             <CopyButton value={group.id} />
           </div>
         </div>
-        <div className="kv">
-          <span>Clave de cifrado (AES-256)</span>
-          <div className="kv-value">
-            <code className="mono-sm">{showKey ? group.encryptionKey : '•'.repeat(16)}</code>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowKey((v) => !v)}>{showKey ? 'Ocultar' : 'Ver'}</button>
-            <CopyButton value={group.encryptionKey} />
+        {enc && (
+          <div className="kv">
+            <span>Clave de cifrado ({enc.algorithm}, {enc.encoding}) · versión {enc.keyVersion}</span>
+            <div className="kv-value">
+              <code className="mono-sm">{showKey ? enc.key : '•'.repeat(16)}</code>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowKey((v) => !v)}>{showKey ? 'Ocultar' : 'Ver'}</button>
+              <CopyButton value={enc.key} />
+            </div>
           </div>
-        </div>
+        )}
         <p className="muted small">
-          La clave es secreta y solo la ven los miembros. La usan la app y las GuiAR para cifrar lo que se mandan por LoRa.
+          La clave es secreta y solo la ven los miembros. La app la pasa a cada pulsera para cifrar lo que se mandan por LoRa.
+          Se renueva sola cuando alguien sale o es quitado del grupo{enc?.rotatedAt ? ` (última vez ${timeAgo(enc.rotatedAt)})` : ''}.
         </p>
+        {isOwner && (
+          <button className="btn btn-link small" onClick={onRotate} disabled={busy === 'rotate'}>
+            {busy === 'rotate' ? 'Renovando…' : 'Renovar clave ahora'}
+          </button>
+        )}
+      </section>
+
+      <section className="settings-block">
+        <h3>Mi pulsera</h3>
+        {myDevice ? (
+          <>
+            <div className="kv">
+              <span>ID de la pulsera</span>
+              <div className="kv-value">
+                <code className="mono-sm">{myDevice.deviceId}</code>
+              </div>
+            </div>
+            <p className="muted small">
+              {[myDevice.name, myDevice.firmware && `firmware ${myDevice.firmware}`, myDevice.lastSeenAt && `último dato ${timeAgo(myDevice.lastSeenAt)}`]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+            <p className="muted small">Cada cuenta puede tener una sola pulsera. Para usar otra, desvinculá esta primero.</p>
+            <button className="btn btn-link btn-danger-text small" onClick={onUnlink} disabled={busy === 'unlink'}>
+              {busy === 'unlink' ? 'Desvinculando…' : 'Desvincular pulsera'}
+            </button>
+          </>
+        ) : (
+          <p className="muted small">
+            Sin pulsera vinculada. Se vincula sola cuando la app manda el primer dato con su ID.
+          </p>
+        )}
       </section>
 
       <section className="settings-block">

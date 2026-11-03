@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { groupApi, getToken, WS_URL } from '../services/api';
+import { deviceApi, groupApi, getToken, WS_URL } from '../services/api';
 
 const GroupContext = createContext(null);
 
@@ -9,8 +9,9 @@ const NO_GROUP_CODES = new Set([4003, 4004, 4005]);
 
 /**
  * Estado del grupo del usuario + conexión en tiempo real.
- *  - group:      { id, name, inviteCode, encryptionKey, ownerId, members[] } | null
+ *  - group:      { id, name, inviteCode, encryption, ownerId, members[] } | null
  *  - locations:  { [userId]: última ubicación }
+ *  - devices:    { [userId]: pulsera { deviceId, name, firmware, lastSeenAt, telemetry } }
  *  - online:     Set de userIds conectados ahora
  *  - wsStatus:   'idle' | 'connecting' | 'connected' | 'reconnecting'
  */
@@ -22,6 +23,7 @@ export function GroupProvider({ children }) {
   const groupLoading = user ? groupLoadingState : false;
   const [groupError, setGroupError] = useState(null);
   const [locations, setLocations] = useState({});
+  const [devices, setDevices] = useState({});
   const [online, setOnline] = useState(new Set());
   const [wsStatus, setWsStatus] = useState('idle');
   const [notice, setNotice] = useState(null); // aviso cuando te sacan del grupo, etc.
@@ -33,8 +35,8 @@ export function GroupProvider({ children }) {
     setGroupError(null);
     try {
       const data = await groupApi.getMine();
-      setGroup(data.group);
-      return data.group;
+      setGroup(data);
+      return data;
     } catch (err) {
       if (err.code === 'NO_GROUP') setGroup(null);
       else setGroupError(err.message);
@@ -55,6 +57,7 @@ export function GroupProvider({ children }) {
     if (!groupId) return;
     groupApi.locations().then((data) => {
       setLocations((prev) => ({ ...Object.fromEntries(data.locations.map((l) => [l.userId, l])), ...prev }));
+      setDevices((prev) => ({ ...Object.fromEntries((data.devices || []).map((d) => [d.userId, d])), ...prev }));
       setOnline(new Set(data.locations.filter((l) => l.online).map((l) => l.userId)));
     }).catch(() => {});
   }, [groupId]);
@@ -62,6 +65,7 @@ export function GroupProvider({ children }) {
   const clearGroup = useCallback(() => {
     setGroup(null);
     setLocations({});
+    setDevices({});
     setOnline(new Set());
   }, []);
 
@@ -77,13 +81,27 @@ export function GroupProvider({ children }) {
     handlersRef.current = {
       snapshot(msg) {
         setLocations(Object.fromEntries(msg.locations.map((l) => [l.userId, l])));
+        setDevices(Object.fromEntries((msg.devices || []).map((d) => [d.userId, d])));
         // Al reconectar puede haber altas y bajas que no se recibieron mientras estaba caído
-        setGroup((g) => (g ? { ...g, ...msg.group } : g));
+        const { keyVersion, ...rest } = msg.group;
+        setGroup((g) => (g ? { ...g, ...rest } : g));
+        // Si la clave cambió mientras estaba desconectado, se pide la nueva
+        if (keyVersion && group?.encryption && keyVersion !== group.encryption.keyVersion) fetchGroup();
         setOnline(new Set(msg.group.members.filter((m) => m.online).map((m) => m.id)));
       },
-      location_update({ location }) {
+      location_update({ location, device }) {
         setLocations((prev) => ({ ...prev, [location.userId]: location }));
+        if (device) setDevices((prev) => ({ ...prev, [device.userId]: device }));
       },
+      device_update({ userId, device }) {
+        setDevices((prev) => {
+          if (device) return { ...prev, [userId]: { ...device, userId } };
+          const { [userId]: _removed, ...rest } = prev;
+          return rest;
+        });
+      },
+      // La clave no viaja por el WebSocket: se pide de nuevo por HTTPS
+      key_rotated: () => fetchGroup(),
       presence({ userId, online: isOnline }) {
         setOnline((prev) => {
           const next = new Set(prev);
@@ -95,6 +113,7 @@ export function GroupProvider({ children }) {
       member_joined: () => fetchGroup(),
       member_left({ userId }) {
         setLocations(({ [userId]: _removed, ...rest }) => rest);
+        setDevices(({ [userId]: _removed, ...rest }) => rest);
         fetchGroup();
       },
       group_renamed: ({ name }) => setGroup((g) => (g ? { ...g, name } : g)),
@@ -173,6 +192,11 @@ export function GroupProvider({ children }) {
   const renameGroup = (name) => run(() => groupApi.rename(name));
   const regenerateCode = () => run(() => groupApi.regenerateCode());
   const kickMember = (userId) => run(() => groupApi.kick(userId));
+  const rotateKey = () => run(() => groupApi.rotateKey());
+  const unlinkDevice = async () => {
+    await deviceApi.unlink();
+    setDevices(({ [user.id]: _removed, ...rest }) => rest);
+  };
   const leaveGroup = async () => {
     await groupApi.leave();
     clearGroup();
@@ -186,6 +210,7 @@ export function GroupProvider({ children }) {
         groupLoading,
         groupError,
         locations,
+        devices,
         online,
         wsStatus,
         notice,
@@ -197,6 +222,8 @@ export function GroupProvider({ children }) {
         renameGroup,
         regenerateCode,
         kickMember,
+        rotateKey,
+        unlinkDevice,
         leaveGroup
       }}
     >

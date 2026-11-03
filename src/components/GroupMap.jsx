@@ -73,7 +73,10 @@ function MemberMarker({ loc, isMe, now }) {
             {loc.heading != null && <><dt>Rumbo</dt><dd>{Math.round(loc.heading)}°</dd></>}
             {loc.speed != null && <><dt>Velocidad</dt><dd>{(loc.speed * 3.6).toFixed(1)} km/h</dd></>}
             {loc.accuracy != null && <><dt>Precisión</dt><dd>±{Math.round(loc.accuracy)} m</dd></>}
+            {loc.gpsFix === false && <><dt>GPS</dt><dd>sin fix</dd></>}
             {loc.satellites != null && <><dt>Satélites</dt><dd>{loc.satellites}</dd></>}
+            {loc.hdop != null && <><dt>HDOP</dt><dd>{loc.hdop.toFixed(1)}</dd></>}
+            {loc.simulated && <><dt>Ubicación</dt><dd>simulada</dd></>}
             {loc.battery != null && <><dt>Batería</dt><dd>{Math.round(loc.battery)}%</dd></>}
             {loc.signal != null && <><dt>Señal LoRa</dt><dd>{loc.signal} dBm</dd></>}
           </dl>
